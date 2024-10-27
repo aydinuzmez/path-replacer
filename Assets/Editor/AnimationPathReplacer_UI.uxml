@@ -1,22 +1,23 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
-    <ui:VisualElement style="height: 100%; width: 100%; flex-basis: 100%; max-height: 100%; min-height: 100%; min-width: 100%; max-width: 100%; transform-origin: center;">
-        <ui:GroupBox name="Header" style="margin: 0;">
-            <ui:Label text="Path Replacer" parse-escape-sequences="true" display-tooltip-when-elided="true" name="title" style="width: 100%; height: auto; margin: 0; font-size: 20px; -unity-font-style: bold; border-bottom-width: 22px; -unity-text-align: upper-center;" />
-            <ui:TextField picking-mode="Ignore" label="Prefix" name="PrefixTextField" hide-mobile-input="true" style="width: 100%; height: auto; margin: 0; padding: 0 5px;" />
+    <ui:VisualElement style="height: 100%; width: 100%; flex-basis: 100%; max-height: 100%; min-height: 100%; min-width: 100%; max-width: 100%; padding-left: 10px; padding-right: 10px; padding-top: 10px; padding-bottom: 10px;">
+        <ui:GroupBox name="Header" style="margin: 0; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0;">
+            <ui:Label text="Animation Clip Path Replacer" parse-escape-sequences="true" display-tooltip-when-elided="true" name="title" style="width: 100%; height: auto; margin: 0; font-size: 20px; -unity-font-style: bold; border-bottom-width: 0; -unity-text-align: upper-center; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0; border-top-width: 0; border-right-width: 0; border-left-width: 0; margin-bottom: 10px; opacity: 0.5;" />
+            <ui:HelpBox title="Info" name="Info" type="Info" message-type="Info" text="{0} yaparak aradaki isimleri değiştir.&#10;{1} yaparak be yapabilirsin." style="align-items: center; justify-content: flex-start; align-self: stretch; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px; border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px; border-left-width: 1px; border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; letter-spacing: 1px; margin-top: 5px; margin-right: 0; margin-bottom: 5px; margin-left: 0; opacity: 0.75;" />
+            <ui:Button text="Load" parse-escape-sequences="true" display-tooltip-when-elided="true" name="LoadButton" style="margin-top: 0; margin-right: 0; margin-bottom: 10px; margin-left: 0; padding-top: 5px; padding-right: 5px; padding-bottom: 5px; padding-left: 5px; border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px; border-left-width: 1px;" />
+            <ui:TextField picking-mode="Ignore" label="Search" name="Search" hide-mobile-input="true" style="width: 100%; height: auto; margin: 0; padding: 0 5px; padding-top: 0; padding-right: 0; padding-bottom: 10px; padding-left: 0;" />
+            <ui:TextField picking-mode="Ignore" label="Prefix" name="PrefixTextField" hide-mobile-input="true" style="width: 100%; height: auto; margin: 0; padding: 0 5px; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0;" />
         </ui:GroupBox>
-        <ui:GroupBox name="Content" style="margin: 0; justify-content: flex-start; flex-direction: row;">
-            <ui:GroupBox name="PanelOriginal" style="margin: 0; align-items: flex-start; height: 100%; width: 50%; max-height: 100%; min-height: 100%; max-width: 50%; min-width: 50%;">
-                <ui:Label text="Original" parse-escape-sequences="true" display-tooltip-when-elided="true" name="OriginalLabel" style="font-size: 16px; -unity-font-style: bold;" />
-                <ui:ListView name="OriginalListView" style="align-self: stretch; height: 100%; width: 100%;" />
+        <ui:GroupBox name="Content" style="margin: 0; justify-content: flex-start; flex-direction: row; padding-top: 5px; padding-right: 0; padding-bottom: 5px; padding-left: 0; margin-bottom: 0; margin-top: 0; margin-right: 0; margin-left: 0; max-width: 100%; height: auto; max-height: none; min-height: 200px;">
+            <ui:GroupBox name="PanelOriginal" style="margin: 0; align-items: flex-start; height: 100%; width: 50%; max-height: 100%; min-height: 100%; max-width: 50%; min-width: 50%; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0;">
+                <ui:Label text="Original" parse-escape-sequences="true" display-tooltip-when-elided="true" name="OriginalLabel" style="font-size: 16px; -unity-font-style: bold; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; padding-top: 0; padding-right: 0; padding-bottom: 10px; padding-left: 0;" />
+                <ui:ListView name="OriginalListView" fixed-item-height="1" virtualization-method="DynamicHeight" reorderable="false" show-alternating-row-backgrounds="All" show-border="true" style="height: 100%; width: 100%;" />
             </ui:GroupBox>
-            <ui:GroupBox name="PanelModified" style="margin: 0; align-items: flex-start; height: 100%; width: 50%; max-width: 50%; min-width: 50%; min-height: 100%; max-height: 100%;">
-                <ui:Label text="Değiştirilmiş" parse-escape-sequences="true" display-tooltip-when-elided="true" name="ModifiedLabel" style="font-size: 16px; -unity-font-style: bold;" />
-                <ui:ListView name="ModifiedListview" style="align-self: stretch; height: 100%; width: 100%; border: 1px solid;" />
+            <ui:GroupBox name="PanelModified" style="margin: 0; align-items: flex-start; height: 100%; width: 50%; max-width: 50%; min-width: 50%; min-height: 100%; max-height: 100%; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0;">
+                <ui:Label text="Değiştirilmiş" parse-escape-sequences="true" display-tooltip-when-elided="true" name="ModifiedLabel" style="font-size: 16px; -unity-font-style: bold; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; padding-top: 0; padding-right: 0; padding-bottom: 10px; padding-left: 0;" />
+                <ui:ListView name="ModifiedListview" fixed-item-height="1" virtualization-method="DynamicHeight" show-alternating-row-backgrounds="All" show-border="true" style="align-self: stretch; height: 100%; width: 100%; border: 1px solid; display: flex;" />
             </ui:GroupBox>
         </ui:GroupBox>
-        <ui:GroupBox name="Buttons" style="margin: 0;">
-            <ui:Button text="Load" parse-escape-sequences="true" display-tooltip-when-elided="true" name="LoadButton" />
-            <ui:Button text="Güncelle" parse-escape-sequences="true" display-tooltip-when-elided="true" name="UpdateButton" />
-        </ui:GroupBox>
+        <ui:Button text="Güncelle" parse-escape-sequences="true" display-tooltip-when-elided="true" name="UpdateButton" style="margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px;" />
+        <ui:HelpBox title="Info" name="Help" type="Info" message-type="Info" style="align-items: center; justify-content: flex-start; align-self: stretch; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px; border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px; border-left-width: 1px; border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; letter-spacing: 1px; font-size: 16px; margin-top: 5px; margin-right: 0; margin-bottom: 0; margin-left: 0;" />
     </ui:VisualElement>
 </ui:UXML>

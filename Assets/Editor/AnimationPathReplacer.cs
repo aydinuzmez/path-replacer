@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text.RegularExpressions;
+using Unity.Mathematics;
 using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
@@ -10,7 +12,6 @@ public class AnimationPathReplacer : EditorWindow
 {
     private List<string> originalPathList = new List<string>();
     private List<string> updatedPathList = new List<string>();
-    private string log = string.Empty;
 
     private ListView originalPathListView;
     private ListView updatedPathListView;
@@ -18,6 +19,8 @@ public class AnimationPathReplacer : EditorWindow
     private HelpBox helpbox;
     private TextField searchTextField; // Arama textfield'ı
     private AnimationClip activeClip;
+    List<EditorCurveBinding> binding_global;
+    List<EditorCurveBinding> newbinding_global;
 
     [MenuItem("Window/Animation Path Replacer")]
     public static void ShowWindow()
@@ -63,8 +66,6 @@ public class AnimationPathReplacer : EditorWindow
 
     private void LoadAnimationPaths()
     {
-
-
         // Orijinal path'leri ve güncellenmiş path'leri listeye ekle
         activeClip = GetActiveAnimation();
         UpdateListview(prefixTextField.text, searchTextField.text);
@@ -158,16 +159,61 @@ public class AnimationPathReplacer : EditorWindow
             activeClip = GetActiveAnimation();
         }
 
-        foreach (var binding in AnimationUtility.GetCurveBindings(activeClip))
+        newbinding_global = new List<EditorCurveBinding>();
+        binding_global = new List<EditorCurveBinding>();
+
+        foreach (EditorCurveBinding binding in AnimationUtility.GetCurveBindings(activeClip))
         {
-            if (binding.path.Contains(searchTerm) == true || searchTerm == "")
+            Match SearchMatch = Regex.Match(searchTerm, @"\{(.*?)\}");
+
+            if (SearchMatch.Groups.Count > 1)
+            {
+                string match1 = SearchMatch.Groups[1].Value;
+
+                if (binding.path.Contains(match1) == true)
+                {
+                    {
+                        originalPathList.Add(binding.path);
+                        string newPath = binding.path.Replace(match1, prefix);
+                        updatedPathList.Add(newPath); // Güncellenmiş path'i updatedPathList'e ekle
+
+                        //Binding al ve değiştir
+
+                        EditorCurveBinding newBinding = binding;
+                        newBinding.path = newPath;
+
+                        newbinding_global.Add(newBinding);
+                        binding_global.Add(binding);
+
+
+
+
+                    }
+                }
+
+            }
+
+            if (binding.path.Contains(searchTerm) == true)
             {
                 {
                     originalPathList.Add(binding.path);
                     string newPath = prefix + "/" + binding.path;
                     updatedPathList.Add(newPath); // Güncellenmiş path'i updatedPathList'e ekle
+
+
+                    //Binding al ve değiştir
+                    var newBinding = binding;
+                    newBinding.path = newPath;
+
+                    newbinding_global.Add(newBinding);
+                    binding_global.Add(binding);
+
+
                 }
             }
+
+
+
         }
 
         // ListView'lere öğeleri ekle
@@ -243,52 +289,24 @@ public class AnimationPathReplacer : EditorWindow
         }
 
         // Path'leri güncelle ve animasyon klibe yaz
-        updatedPathList.Clear();
-        foreach (var binding in AnimationUtility.GetCurveBindings(activeClip))
+
+        int index = 0;
+        foreach (var newbinding in newbinding_global)
         {
-            /**************************************************************
 
-            ***/
-            if (binding.path.Contains(searchTextField.text) == true || searchTextField.text == "")
-            {
+            var curve = AnimationUtility.GetEditorCurve(activeClip, binding_global[index]);
+            AnimationUtility.SetEditorCurve(activeClip, binding_global[index], null); // Eski path'i kaldır
+            AnimationUtility.SetEditorCurve(activeClip, newbinding, curve);
+            index++;
 
-                string newPath = prefix + "/" + binding.path;
-                updatedPathList.Add(newPath);
-
-                // Yeni binding ile eğriyi klibe yaz
-                var newBinding = binding;
-                newBinding.path = newPath;
-
-                // Mevcut eğriyi al ve yeni path ile ayarla
-                var curve = AnimationUtility.GetEditorCurve(activeClip, binding);
-                AnimationUtility.SetEditorCurve(activeClip, binding, null); // Eski path'i kaldır
-                AnimationUtility.SetEditorCurve(activeClip, newBinding, curve); // Yeni path ile aynı eğriyi ekle
-            }
         }
 
-        originalPathListView.itemsSource = originalPathList;
-        updatedPathListView.itemsSource = updatedPathList;
-        updatedPathListView.RefreshItems();
-
         helpbox.messageType = HelpBoxMessageType.Info;
-        helpbox.text = "Path'ler güncellendi ve aktif klibe yazıldı!";
+        helpbox.text = "Aktif Animasyonun üzerine yazıldı! Toplam Path : " + index.ToString();
+
     }
-    private void FilterPaths(string searchTerm)
-    {
-        // Arama terimine göre filtreleme
-        List<string> filteredOriginalPaths = originalPathList.FindAll(path => path.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
-        List<string> filteredUpdatedPaths = updatedPathList.FindAll(path => path.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
-
-        // Filtrelenmiş path'leri ListView'lere ayarla
-        originalPathListView.itemsSource = filteredOriginalPaths;
-        updatedPathListView.itemsSource = filteredUpdatedPaths;
-
-        // ListView'leri yeniden oluştur
-        originalPathListView.Rebuild();
-        updatedPathListView.Rebuild();
-    }
-
-
-
 
 }
+
+
+

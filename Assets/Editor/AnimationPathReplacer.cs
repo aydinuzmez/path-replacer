@@ -18,6 +18,7 @@ public class AnimationPathReplacer : EditorWindow
     private TextField prefixTextField;
     private HelpBox helpbox;
     private TextField searchTextField; // Arama textfield'ı
+    private DropdownField searchDropDown; // 
     private AnimationClip activeClip;
     List<EditorCurveBinding> binding_global;
     List<EditorCurveBinding> newbinding_global;
@@ -58,6 +59,11 @@ public class AnimationPathReplacer : EditorWindow
 
         searchTextField = root.Q<TextField>("Search");
         searchTextField.RegisterValueChangedCallback(evt => UpdateListview(prefixTextField.text, evt.newValue));
+
+
+        searchDropDown = root.Q<DropdownField>("SearchDropdown");
+        searchDropDown.choices = new List<string>() { "Prefix", "{Between}", "Suffix" };
+        searchDropDown.value = searchDropDown.choices[0];
 
 
     }

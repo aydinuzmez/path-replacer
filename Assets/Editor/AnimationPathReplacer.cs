@@ -48,7 +48,7 @@ public class AnimationPathReplacer : EditorWindow
         var root = visualTree.CloneTree();
         rootVisualElement.Add(root);
 
-        root.Q<Label>("versionTitle").text = "v1.0.0";
+        root.Q<Label>("versionTitle").text = "v1.1.0";
 
         // Find and assign ListViews and TextFields
         originalPathListView = root.Q<ListView>("OriginalListView");

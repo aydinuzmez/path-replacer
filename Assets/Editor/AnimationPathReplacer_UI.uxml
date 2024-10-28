@@ -22,6 +22,7 @@
                 </ui:GroupBox>
             </ui:GroupBox>
             <ui:Button text="Güncelle" parse-escape-sequences="true" display-tooltip-when-elided="true" name="UpdateButton" style="margin-top: 5px; margin-right: 0; margin-bottom: 5px; margin-left: 0; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px; flex-grow: 1; flex-shrink: 1; min-height: 30px; max-height: none;" />
+            <ui:Button text="Discard All Changes" parse-escape-sequences="true" display-tooltip-when-elided="true" name="DiscardButton" style="margin-top: 5px; margin-right: 0; margin-bottom: 5px; margin-left: 0; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px; flex-grow: 1; flex-shrink: 1; min-height: 30px; max-height: none; align-items: stretch; align-self: stretch;" />
             <ui:GroupBox name="GroupBox" style="margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0;">
                 <ui:HelpBox title="Info" name="Help" type="Info" message-type="Info" style="flex-grow: 1; min-height: auto; height: 50px; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0;" />
             </ui:GroupBox>

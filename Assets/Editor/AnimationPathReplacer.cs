@@ -19,6 +19,8 @@ public class AnimationPathReplacer : EditorWindow
     private AnimationClip activeClip;
     List<EditorCurveBinding> binding_global;
     List<EditorCurveBinding> newbinding_global;
+    List<EditorCurveBinding> old_newbinding_global;
+
 
     SearchDropdownList selectedOption;
 
@@ -64,6 +66,9 @@ public class AnimationPathReplacer : EditorWindow
         // Button to update paths
         var updateButton = root.Q<Button>("UpdateButton");
         updateButton.clicked += UpdateAnimationPaths;
+
+        var discardButton = root.Q<Button>("DiscardButton");
+        discardButton.clicked += DiscardAllChanged;
 
         // 
         helpbox = root.Q<HelpBox>("Help");
@@ -301,8 +306,8 @@ public class AnimationPathReplacer : EditorWindow
             return;
         }
 
-        var currentClipProperty = animEditorState.GetType().GetProperty("activeAnimationClip", BindingFlags.Public | BindingFlags.Instance);
-        var activeClip = currentClipProperty?.GetValue(animEditorState) as AnimationClip;
+        //var currentClipProperty = animEditorState.GetType().GetProperty("activeAnimationClip", BindingFlags.Public | BindingFlags.Instance);
+        //var activeClip = currentClipProperty?.GetValue(animEditorState) as AnimationClip;
 
         if (activeClip == null)
         {
@@ -313,21 +318,53 @@ public class AnimationPathReplacer : EditorWindow
 
         // Path'leri güncelle ve animasyon klibe yaz
 
-        int index = 0;
-        foreach (var newbinding in newbinding_global)
+
+        if (old_newbinding_global != null)
+        {
+            int index2 = 0;
+            foreach (var newbinding in newbinding_global)
+            {
+                var curve = AnimationUtility.GetEditorCurve(activeClip, old_newbinding_global[index2]);
+                AnimationUtility.SetEditorCurve(activeClip, old_newbinding_global[index2], null); // Eski path'i kaldır
+                AnimationUtility.SetEditorCurve(activeClip, newbinding, curve);
+                index2++;
+            }
+            helpbox.messageType = HelpBoxMessageType.Info;
+            helpbox.text = "Aktif Animasyonun üzerine tekrar yazıldı! Toplam Path : " + index2.ToString();
+        }
+        else
         {
 
-            var curve = AnimationUtility.GetEditorCurve(activeClip, binding_global[index]);
-            AnimationUtility.SetEditorCurve(activeClip, binding_global[index], null); // Eski path'i kaldır
-            AnimationUtility.SetEditorCurve(activeClip, newbinding, curve);
-            index++;
-
+            int index = 0;
+            foreach (var newbinding in newbinding_global)
+            {
+                var curve = AnimationUtility.GetEditorCurve(activeClip, binding_global[index]);
+                AnimationUtility.SetEditorCurve(activeClip, binding_global[index], null); // Eski path'i kaldır
+                AnimationUtility.SetEditorCurve(activeClip, newbinding, curve);
+                index++;
+            }
+            helpbox.messageType = HelpBoxMessageType.Info;
+            helpbox.text = "Aktif Animasyonun üzerine yazıldı! Toplam Path : " + index.ToString();
         }
-
-        helpbox.messageType = HelpBoxMessageType.Info;
-        helpbox.text = "Aktif Animasyonun üzerine yazıldı! Toplam Path : " + index.ToString();
+        old_newbinding_global = newbinding_global;
 
     }
+    private void DiscardAllChanged()
+    {
+        int index2 = 0;
+        foreach (var binding in binding_global)
+        {
+            var curve = AnimationUtility.GetEditorCurve(activeClip, old_newbinding_global[index2]);
+            AnimationUtility.SetEditorCurve(activeClip, old_newbinding_global[index2], null); // Eski path'i kaldır
+            AnimationUtility.SetEditorCurve(activeClip, binding, curve);
+            index2++;
+        }
+        helpbox.messageType = HelpBoxMessageType.Info;
+        helpbox.text = "Aktif Animasyonun Eski haline getirildi.";
+        old_newbinding_global = null;
+    }
+
+
 
 }
 

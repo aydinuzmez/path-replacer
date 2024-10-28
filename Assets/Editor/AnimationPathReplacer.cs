@@ -39,12 +39,16 @@ public class AnimationPathReplacer : EditorWindow
         Suffix
     }
 
+
+
     private void CreateGUI()
     {
         // Load the UXML file
         var visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/Editor/AnimationPathReplacer_UI.uxml");
         var root = visualTree.CloneTree();
         rootVisualElement.Add(root);
+
+        root.Q<Label>("versionTitle").text = "v1.0.0";
 
         // Find and assign ListViews and TextFields
         originalPathListView = root.Q<ListView>("OriginalListView");

@@ -1,9 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Text.RegularExpressions;
-using Unity.Mathematics;
-using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -23,12 +20,23 @@ public class AnimationPathReplacer : EditorWindow
     List<EditorCurveBinding> binding_global;
     List<EditorCurveBinding> newbinding_global;
 
-    [MenuItem("Window/Animation Path Replacer")]
+    SearchDropdownList selectedOption;
+
+    EditorCurveBinding[] curve;
+
+    [MenuItem("Animation/Animation Path Replacer")]
     public static void ShowWindow()
     {
         var window = GetWindow<AnimationPathReplacer>();
         window.titleContent = new GUIContent("Animation Path Replacer");
         window.Show();
+    }
+
+    public enum SearchDropdownList
+    {
+        Prefix,
+        Infix,
+        Suffix
     }
 
     private void CreateGUI()
@@ -43,7 +51,7 @@ public class AnimationPathReplacer : EditorWindow
         updatedPathListView = root.Q<ListView>("ModifiedListview");
 
         prefixTextField = root.Q<TextField>("PrefixTextField");
-        prefixTextField.RegisterValueChangedCallback(evt => UpdateListview(evt.newValue, searchTextField.text));
+        prefixTextField.RegisterValueChangedCallback(evt => UpdateListview(evt.newValue, searchTextField.text, selectedOption));
 
         // Button to load paths
         var loadButton = root.Q<Button>("LoadButton");
@@ -58,25 +66,28 @@ public class AnimationPathReplacer : EditorWindow
         helpbox.messageType = HelpBoxMessageType.None;
 
         searchTextField = root.Q<TextField>("Search");
-        searchTextField.RegisterValueChangedCallback(evt => UpdateListview(prefixTextField.text, evt.newValue));
+        searchTextField.RegisterValueChangedCallback(evt => UpdateListview(prefixTextField.text, evt.newValue, selectedOption));
 
 
         searchDropDown = root.Q<DropdownField>("SearchDropdown");
-        searchDropDown.choices = new List<string>() { "Prefix", "{Between}", "Suffix" };
-        searchDropDown.value = searchDropDown.choices[0];
 
+        searchDropDown.choices = new List<string>(System.Enum.GetNames(typeof(SearchDropdownList)));
+        searchDropDown.value = SearchDropdownList.Prefix.ToString();
 
+        searchDropDown.RegisterValueChangedCallback(evt =>
+        {
+            selectedOption = (SearchDropdownList)System.Enum.Parse(typeof(SearchDropdownList), evt.newValue);
+            UpdateListview(prefixTextField.text, searchTextField.text, selectedOption);
+        });
     }
-
 
 
     private void LoadAnimationPaths()
     {
         // Orijinal path'leri ve güncellenmiş path'leri listeye ekle
         activeClip = GetActiveAnimation();
-        UpdateListview(prefixTextField.text, searchTextField.text);
-
-
+        GetActiveCurve();
+        UpdateListview(prefixTextField.text, searchTextField.text, selectedOption);
     }
 
     private AnimationClip GetActiveAnimation()
@@ -155,7 +166,13 @@ public class AnimationPathReplacer : EditorWindow
 
     }
 
-    private void UpdateListview(string prefix, string searchTerm)
+    private EditorCurveBinding[] GetActiveCurve()
+    {
+        curve = AnimationUtility.GetCurveBindings(activeClip);
+        return curve;
+    }
+
+    private void UpdateListview(string prefix, string searchTerm, SearchDropdownList option)
     {
         originalPathList.Clear();
         updatedPathList.Clear();
@@ -168,59 +185,63 @@ public class AnimationPathReplacer : EditorWindow
         newbinding_global = new List<EditorCurveBinding>();
         binding_global = new List<EditorCurveBinding>();
 
-        foreach (EditorCurveBinding binding in AnimationUtility.GetCurveBindings(activeClip))
+        string newPath;
+        EditorCurveBinding newBinding;
+        foreach (EditorCurveBinding binding in curve)
         {
-            Match SearchMatch = Regex.Match(searchTerm, @"\{(.*?)\}");
 
-            if (SearchMatch.Groups.Count > 1)
+            switch (option)
             {
-                string match1 = SearchMatch.Groups[1].Value;
-
-                if (binding.path.Contains(match1) == true)
-                {
-                    {
-                        originalPathList.Add(binding.path);
-                        string newPath = binding.path.Replace(match1, prefix);
-                        updatedPathList.Add(newPath); // Güncellenmiş path'i updatedPathList'e ekle
-
-                        //Binding al ve değiştir
-
-                        EditorCurveBinding newBinding = binding;
-                        newBinding.path = newPath;
-
-                        newbinding_global.Add(newBinding);
-                        binding_global.Add(binding);
+                case SearchDropdownList.Prefix: //Option 1
 
 
+                    if (prefix == "")
+                        newPath = binding.path;
+                    else
+                        newPath = prefix + "/" + binding.path;
 
-
-                    }
-                }
-
-            }
-
-            if (binding.path.Contains(searchTerm) == true)
-            {
-                {
                     originalPathList.Add(binding.path);
-                    string newPath = prefix + "/" + binding.path;
+                    updatedPathList.Add(newPath); // Güncellenmiş path'i updatedPathList'e ekle
+
+                    break;
+
+                case SearchDropdownList.Infix: //Option 2
+                    originalPathList.Add(binding.path);
+                    newPath = binding.path.Replace(searchTerm, prefix);
                     updatedPathList.Add(newPath); // Güncellenmiş path'i updatedPathList'e ekle
 
 
-                    //Binding al ve değiştir
-                    var newBinding = binding;
-                    newBinding.path = newPath;
 
-                    newbinding_global.Add(newBinding);
-                    binding_global.Add(binding);
+                    break;
+                case SearchDropdownList.Suffix: //Option 3
+                    originalPathList.Add(binding.path);
+                    if (prefix == "")
+                    {
+                        newPath = binding.path;
+                    }
+                    else
+                    {
+                        newPath = binding.path + "/" + prefix;
+                    }
+                    updatedPathList.Add(newPath); // Güncellenmiş path'i updatedPathList'e ekle
 
 
-                }
+                    break;
+                default:
+                    newPath = "";
+                    break;
             }
 
+            //Binding al ve değiştir
+            newBinding = binding;
+            newBinding.path = newPath;
 
-
+            newbinding_global.Add(newBinding);
+            binding_global.Add(binding);
         }
+
+
+
 
         // ListView'lere öğeleri ekle
         originalPathListView.itemsSource = originalPathList; // Orijinal path'leri listele

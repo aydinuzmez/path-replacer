@@ -5,367 +5,373 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-public class AnimationPathReplacer : EditorWindow
+namespace Editor
 {
-    private List<string> originalPathList = new List<string>();
-    private List<string> updatedPathList = new List<string>();
-
-    private ListView originalPathListView;
-    private ListView updatedPathListView;
-    private TextField prefixTextField;
-    private HelpBox helpbox;
-    private TextField searchTextField; // Arama textfield'ı
-    private DropdownField searchDropDown; // 
-    private AnimationClip activeClip;
-    List<EditorCurveBinding> binding_global;
-    List<EditorCurveBinding> newbinding_global;
-    List<EditorCurveBinding> old_newbinding_global;
-
-
-    SearchDropdownList selectedOption;
-
-    EditorCurveBinding[] curve;
-
-    [MenuItem("Animation/Animation Path Replacer")]
-    public static void ShowWindow()
+    public class AnimationPathReplacer : EditorWindow
     {
-        var window = GetWindow<AnimationPathReplacer>();
-        window.titleContent = new GUIContent("Animation Path Replacer");
-        window.Show();
-    }
+        private List<string> _originalPathList ;
+        private List<string> _updatedPathList;
 
-    public enum SearchDropdownList
-    {
-        Prefix,
-        Infix,
-        Suffix
-    }
-
-
-
-    private void CreateGUI()
-    {
-        // Load the UXML file
-        var visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/Editor/AnimationPathReplacer_UI.uxml");
-        var root = visualTree.CloneTree();
-        rootVisualElement.Add(root);
-
-        root.Q<Label>("versionTitle").text = "v1.2.0";
-
-        // Find and assign ListViews and TextFields
-        originalPathListView = root.Q<ListView>("OriginalListView");
-        updatedPathListView = root.Q<ListView>("ModifiedListview");
-
-        prefixTextField = root.Q<TextField>("PrefixTextField");
-        prefixTextField.RegisterValueChangedCallback(evt => UpdateListview(evt.newValue, searchTextField.text, selectedOption));
-
-        // Button to load paths
-        var loadButton = root.Q<Button>("LoadButton");
-        loadButton.clicked += LoadAnimationPaths;
-
-        // Button to update paths
-        var updateButton = root.Q<Button>("UpdateButton");
-        updateButton.clicked += UpdateAnimationPaths;
-
-        var discardButton = root.Q<Button>("DiscardButton");
-        discardButton.clicked += DiscardAllChanged;
-
-        // 
-        helpbox = root.Q<HelpBox>("Help");
-        helpbox.messageType = HelpBoxMessageType.None;
-
-        searchTextField = root.Q<TextField>("Search");
-        searchTextField.RegisterValueChangedCallback(evt => UpdateListview(prefixTextField.text, evt.newValue, selectedOption));
+        private ListView _originalPathListView;
+        private ListView _updatedPathListView;
+        private TextField _prefixTextField;
+        private HelpBox _helpbox;
+        private TextField _searchTextField; 
+        private DropdownField _searchDropDown; 
+        private AnimationClip _activeClip;
+        List<EditorCurveBinding> _bindingGlobal;
+        List<EditorCurveBinding> _newBindingGlobal;
+        List<EditorCurveBinding> _oldNewBindingGlobal;
 
 
-        searchDropDown = root.Q<DropdownField>("SearchDropdown");
+        private Button _discardButton;
+        private Button _updateButton;
+    
 
-        searchDropDown.choices = new List<string>(System.Enum.GetNames(typeof(SearchDropdownList)));
-        searchDropDown.value = SearchDropdownList.Prefix.ToString();
+        SearchDropdownList _selectedOption;
 
-        selectedOption = SearchDropdownList.Prefix;
-        searchDropDown.RegisterValueChangedCallback(evt =>
+        EditorCurveBinding[] _curve;
+
+        [MenuItem("Animation/Animation Path Replacer")]
+        public static void ShowWindow()
         {
-            selectedOption = (SearchDropdownList)System.Enum.Parse(typeof(SearchDropdownList), evt.newValue);
-            UpdateListview(prefixTextField.text, searchTextField.text, selectedOption);
-        });
-    }
-
-
-    private void LoadAnimationPaths()
-    {
-        // Orijinal path'leri ve güncellenmiş path'leri listeye ekle
-        activeClip = GetActiveAnimation();
-        GetActiveCurve();
-        UpdateListview(prefixTextField.text, searchTextField.text, selectedOption);
-    }
-
-    private AnimationClip GetActiveAnimation()
-    {
-        // Animation Window türünü al
-        Type animationWindowType = Type.GetType("UnityEditor.AnimationWindow,UnityEditor");
-        if (animationWindowType == null)
-        {
-            helpbox.messageType = HelpBoxMessageType.Error;
-            helpbox.text = "AnimationWindow tipi bulunamadı. Unity sürümüne göre farklılık gösterebilir.";
-            return null;
+            var window = GetWindow<AnimationPathReplacer>();
+            window.titleContent = new GUIContent("Animation Path Replacer");
+            window.Show();
         }
 
-        // Animation Window örneğini bul
-        var animationWindow = Resources.FindObjectsOfTypeAll(animationWindowType);
-        if (animationWindow.Length == 0)
+        private enum SearchDropdownList
         {
-            helpbox.messageType = HelpBoxMessageType.Error;
-            helpbox.text = "Animation Window açık değil veya bulunamadı.";
-            return null;
+            Prefix,
+            Infix,
+            Suffix
         }
 
-        var animationWindowInstance = animationWindow[0];
 
-        // m_AnimEditor alanını al
-        var animEditorField = animationWindowType.GetField("m_AnimEditor", BindingFlags.NonPublic | BindingFlags.Instance);
-        if (animEditorField == null)
+
+        private void CreateGUI()
         {
-            helpbox.messageType = HelpBoxMessageType.Error;
-            helpbox.text = "m_AnimEditor alanı bulunamadı. Unity sürümüne göre değişiklik gösterebilir.";
-            return null;
-        }
+            // Load the UXML file
+            var visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/Editor/AnimationPathReplacer_UI.uxml");
+            var root = visualTree.CloneTree();
+            rootVisualElement.Add(root);
 
-        var animEditor = animEditorField.GetValue(animationWindowInstance);
-        if (animEditor == null)
-        {
-            helpbox.messageType = HelpBoxMessageType.Warning;
-            helpbox.text = "Animasyon editörü aktif değil.";
-            return null;
-        }
+            root.Q<Label>("versionTitle").text = "v1.2.0";
 
-        // m_State alanını al ve animationClip özelliğini kullan
-        var animEditorStateField = animEditor.GetType().GetField("m_State", BindingFlags.NonPublic | BindingFlags.Instance);
-        if (animEditorStateField == null)
-        {
-            helpbox.messageType = HelpBoxMessageType.Error;
-            helpbox.text = "m_State alanı bulunamadı. Unity sürümüne göre değişiklik gösterebilir.";
-            return null;
-        }
+            // Find and assign ListViews and TextFields
+            _originalPathListView = root.Q<ListView>("OriginalListView");
+            _updatedPathListView = root.Q<ListView>("ModifiedListview");
 
-        var animEditorState = animEditorStateField.GetValue(animEditor);
-        if (animEditorState == null)
-        {
-            helpbox.messageType = HelpBoxMessageType.Warning;
-            helpbox.text = "Animasyon editör durumu aktif değil.";
-            return null;
-        }
+            _prefixTextField = root.Q<TextField>("PrefixTextField");
+            _prefixTextField.RegisterValueChangedCallback(evt => UpdateListview(evt.newValue, _searchTextField.text, _selectedOption));
 
-        // m_State içindeki activeAnimationClip özelliğini al
-        var currentClipProperty = animEditorState.GetType().GetProperty("activeAnimationClip", BindingFlags.Public | BindingFlags.Instance);
-        if (currentClipProperty == null)
-        {
-            helpbox.messageType = HelpBoxMessageType.Error;
-            helpbox.text = "activeAnimationClip özelliği bulunamadı. Unity sürümüne göre değişiklik gösterebilir.";
-            return null;
-        }
+            // Button to load paths
+            var loadButton = root.Q<Button>("LoadButton");
+            loadButton.clicked += LoadAnimationPaths;
 
-        var activeClip = currentClipProperty.GetValue(animEditorState) as AnimationClip;
-        if (activeClip == null)
-        {
-            helpbox.messageType = HelpBoxMessageType.Warning;
-            helpbox.text = "Aktif animasyon klip bulunamadı.";
-            return null;
-        }
-        return activeClip;
+            // Button to update paths
+            _updateButton = root.Q<Button>("UpdateButton");
+            _updateButton.clicked += UpdateAnimationPaths;
 
-    }
+            _discardButton = root.Q<Button>("DiscardButton");
+            _discardButton.clicked += DiscardAllChanged;
 
-    private EditorCurveBinding[] GetActiveCurve()
-    {
-        curve = AnimationUtility.GetCurveBindings(activeClip);
-        return curve;
-    }
+            // 
+            _helpbox = root.Q<HelpBox>("Help");
+            _helpbox.messageType = HelpBoxMessageType.None;
 
-    private void UpdateListview(string path, string searchTerm, SearchDropdownList option)
-    {
-        originalPathList.Clear();
-        updatedPathList.Clear();
-
-        if (activeClip == null)
-        {
-            activeClip = GetActiveAnimation();
-        }
-
-        newbinding_global = new List<EditorCurveBinding>();
-        binding_global = new List<EditorCurveBinding>();
+            _searchTextField = root.Q<TextField>("Search");
+            _searchTextField.RegisterValueChangedCallback(evt => UpdateListview(_prefixTextField.text, evt.newValue, _selectedOption));
 
 
-        foreach (EditorCurveBinding binding in curve)
-        {
-            string newPath;
-            EditorCurveBinding newBinding;
-            if (binding.path.Contains(searchTerm) == true)
+            _searchDropDown = root.Q<DropdownField>("SearchDropdown");
+
+            _searchDropDown.choices = new List<string>(System.Enum.GetNames(typeof(SearchDropdownList)));
+            _searchDropDown.value = SearchDropdownList.Prefix.ToString();
+
+            _selectedOption = SearchDropdownList.Prefix;
+            _searchDropDown.RegisterValueChangedCallback(evt =>
             {
-                switch (option)
-                {
-                    case SearchDropdownList.Prefix: //Option 1
-                        if (path == "") newPath = binding.path;
-                        else newPath = path + "/" + binding.path;
+                _selectedOption = (SearchDropdownList)System.Enum.Parse(typeof(SearchDropdownList), evt.newValue);
+                UpdateListview(_prefixTextField.text, _searchTextField.text, _selectedOption);
+            });
+        }
 
-                        originalPathList.Add(binding.path);
-                        updatedPathList.Add(newPath); // Güncellenmiş path'i updatedPathList'e ekle
-                        break;
 
-                    case SearchDropdownList.Infix: //Option 2
-                        newPath = binding.path.Replace(searchTerm, path);
+        private void LoadAnimationPaths()
+        {
+            _discardButton.text = "Discard All Changes";
+            // Orijinal path'leri ve güncellenmiş path'leri listeye ekle
+            _activeClip = GetActiveAnimation();
+            GetActiveCurve();
+            UpdateListview(_prefixTextField.text, _searchTextField.text, _selectedOption);
+        }
 
-                        originalPathList.Add(binding.path);
-                        updatedPathList.Add(newPath); // Güncellenmiş path'i updatedPathList'e ekle
-                        break;
-
-                    case SearchDropdownList.Suffix: //Option 3
-
-                        if (path == "") newPath = binding.path;
-                        else newPath = binding.path + "/" + path;
-
-                        originalPathList.Add(binding.path);
-                        updatedPathList.Add(newPath); // Güncellenmiş path'i updatedPathList'e ekle
-                        break;
-                    default:
-                        newPath = "";
-                        break;
-                }
-
-                //Binding al ve değiştir
-                newBinding = binding;
-                newBinding.path = newPath;
-
-                newbinding_global.Add(newBinding);
-                binding_global.Add(binding);
+        private AnimationClip GetActiveAnimation()
+        {
+            // Animation Window türünü al
+            Type animationWindowType = Type.GetType("UnityEditor.AnimationWindow,UnityEditor");
+            if (animationWindowType == null)
+            {
+                _helpbox.messageType = HelpBoxMessageType.Error;
+                _helpbox.text = "AnimationWindow tipi bulunamadı. Unity sürümüne göre farklılık gösterebilir.";
+                return null;
             }
-        }
 
-
-
-
-        // ListView'lere öğeleri ekle
-        originalPathListView.itemsSource = originalPathList; // Orijinal path'leri listele
-        updatedPathListView.itemsSource = updatedPathList; // Güncellenmiş path'leri listele
-
-        helpbox.messageType = HelpBoxMessageType.Info;
-        helpbox.text = "Liste Yüklendi. Toplam Path: " + originalPathList.Count;
-
-
-        originalPathListView.RefreshItems();
-        updatedPathListView.RefreshItems();
-    }
-
-
-    private void UpdateAnimationPaths()
-    {
-        helpbox.messageType = HelpBoxMessageType.Info;
-        helpbox.text = "Güncelleme butonuna tıklandı.";
-
-        if (originalPathList.Count == 0)
-        {
-            helpbox.messageType = HelpBoxMessageType.Warning;
-            helpbox.text = "Güncellenecek path yok. Lütfen önce path'leri yükleyin.";
-            return;
-        }
-
-        string prefix = prefixTextField?.value;
-        if (string.IsNullOrEmpty(prefix))
-        {
-            helpbox.messageType = HelpBoxMessageType.Warning;
-            helpbox.text = "Ön ek boş veya null.";
-            return;
-        }
-
-        // Animation Window ve aktif klip referansları
-        Type animationWindowType = Type.GetType("UnityEditor.AnimationWindow,UnityEditor");
-        var animationWindow = Resources.FindObjectsOfTypeAll(animationWindowType);
-        if (animationWindow.Length == 0)
-        {
-            helpbox.messageType = HelpBoxMessageType.Error;
-            helpbox.text = "Animation Window bulunamadı.";
-            return;
-        }
-
-        var animationWindowInstance = animationWindow[0];
-        var animEditorField = animationWindowType.GetField("m_AnimEditor", BindingFlags.NonPublic | BindingFlags.Instance);
-        var animEditor = animEditorField?.GetValue(animationWindowInstance);
-        if (animEditor == null)
-        {
-            helpbox.messageType = HelpBoxMessageType.Error;
-            helpbox.text = "Animasyon editörü örneği bulunamadı.";
-            return;
-        }
-
-        var animEditorStateField = animEditor.GetType().GetField("m_State", BindingFlags.NonPublic | BindingFlags.Instance);
-        var animEditorState = animEditorStateField?.GetValue(animEditor);
-        if (animEditorState == null)
-        {
-            helpbox.messageType = HelpBoxMessageType.Error;
-            helpbox.text = "Animasyon editör durumu aktif değil.";
-            return;
-        }
-
-        //var currentClipProperty = animEditorState.GetType().GetProperty("activeAnimationClip", BindingFlags.Public | BindingFlags.Instance);
-        //var activeClip = currentClipProperty?.GetValue(animEditorState) as AnimationClip;
-
-        if (activeClip == null)
-        {
-            helpbox.messageType = HelpBoxMessageType.Warning;
-            helpbox.text = "Aktif animasyon klip bulunamadı. Güncelleme işlemi yapılamaz.";
-            return;
-        }
-
-        // Path'leri güncelle ve animasyon klibe yaz
-
-
-        if (old_newbinding_global != null)
-        {
-            int index2 = 0;
-            foreach (var newbinding in newbinding_global)
+            // Animation Window örneğini bul
+            var animationWindow = Resources.FindObjectsOfTypeAll(animationWindowType);
+            if (animationWindow.Length == 0)
             {
-                var curve = AnimationUtility.GetEditorCurve(activeClip, old_newbinding_global[index2]);
-                AnimationUtility.SetEditorCurve(activeClip, old_newbinding_global[index2], null); // Eski path'i kaldır
-                AnimationUtility.SetEditorCurve(activeClip, newbinding, curve);
+                _helpbox.messageType = HelpBoxMessageType.Error;
+                _helpbox.text = "Animation Window açık değil veya bulunamadı.";
+                return null;
+            }
+
+            var animationWindowInstance = animationWindow[0];
+
+            // m_AnimEditor alanını al
+            var animEditorField = animationWindowType.GetField("m_AnimEditor", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (animEditorField == null)
+            {
+                _helpbox.messageType = HelpBoxMessageType.Error;
+                _helpbox.text = "m_AnimEditor alanı bulunamadı. Unity sürümüne göre değişiklik gösterebilir.";
+                return null;
+            }
+
+            var animEditor = animEditorField.GetValue(animationWindowInstance);
+            if (animEditor == null)
+            {
+                _helpbox.messageType = HelpBoxMessageType.Warning;
+                _helpbox.text = "Animasyon editörü aktif değil.";
+                return null;
+            }
+
+            // m_State alanini al ve animationClip ozelligini kullan
+            var animEditorStateField = animEditor.GetType().GetField("m_State", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (animEditorStateField == null)
+            {
+                _helpbox.messageType = HelpBoxMessageType.Error;
+                _helpbox.text = "m_State alanı bulunamadı. Unity sürümüne göre değişiklik gösterebilir.";
+                return null;
+            }
+
+            var animEditorState = animEditorStateField.GetValue(animEditor);
+            if (animEditorState == null)
+            {
+                _helpbox.messageType = HelpBoxMessageType.Warning;
+                _helpbox.text = "Animasyon editör durumu aktif değil.";
+                return null;
+            }
+
+            // m_State içindeki activeAnimationClip özelliğini al
+            var currentClipProperty = animEditorState.GetType().GetProperty("activeAnimationClip", BindingFlags.Public | BindingFlags.Instance);
+            if (currentClipProperty == null)
+            {
+                _helpbox.messageType = HelpBoxMessageType.Error;
+                _helpbox.text = "activeAnimationClip özelliği bulunamadı. Unity sürümüne göre değişiklik gösterebilir.";
+                return null;
+            }
+
+            var activeClip = currentClipProperty.GetValue(animEditorState) as AnimationClip;
+            if (activeClip == null)
+            {
+                _helpbox.messageType = HelpBoxMessageType.Warning;
+                _helpbox.text = "Aktif animasyon klip bulunamadı.";
+                return null;
+            }
+            return activeClip;
+
+        }
+
+        private EditorCurveBinding[] GetActiveCurve()
+        {
+            _curve = AnimationUtility.GetCurveBindings(_activeClip);
+            return _curve;
+        }
+
+        private void UpdateListview(string path, string searchTerm, SearchDropdownList option)
+        {
+            _originalPathList.Clear();
+            _updatedPathList.Clear();
+
+            if (_activeClip == null)
+            {
+                _activeClip = GetActiveAnimation();
+            }
+
+            _newBindingGlobal = new List<EditorCurveBinding>();
+            _bindingGlobal = new List<EditorCurveBinding>();
+
+
+            foreach (EditorCurveBinding binding in _curve)
+            {
+                string newPath;
+                EditorCurveBinding newBinding;
+                if (binding.path.Contains(searchTerm) == true)
+                {
+                    switch (option)
+                    {
+                        case SearchDropdownList.Prefix: //Option 1
+                            if (path == "") newPath = binding.path;
+                            else newPath = path + "/" + binding.path;
+
+                            _originalPathList.Add(binding.path);
+                            _updatedPathList.Add(newPath); // Güncellenmiş path'i updatedPathList'e ekle
+                            break;
+
+                        case SearchDropdownList.Infix: //Option 2
+                            newPath = binding.path.Replace(searchTerm, path);
+
+                            _originalPathList.Add(binding.path);
+                            _updatedPathList.Add(newPath); // Güncellenmiş path'i updatedPathList'e ekle
+                            break;
+
+                        case SearchDropdownList.Suffix: //Option 3
+
+                            if (path == "") newPath = binding.path;
+                            else newPath = binding.path + "/" + path;
+
+                            _originalPathList.Add(binding.path);
+                            _updatedPathList.Add(newPath); // Güncellenmiş path'i updatedPathList'e ekle
+                            break;
+                        default:
+                            newPath = "";
+                            break;
+                    }
+
+                    //Binding al ve değiştir
+                    newBinding = binding;
+                    newBinding.path = newPath;
+
+                    _newBindingGlobal.Add(newBinding);
+                    _bindingGlobal.Add(binding);
+                }
+            }
+
+
+
+
+            // ListView'lere öğeleri ekle
+            _originalPathListView.itemsSource = _originalPathList; // Orijinal path'leri listele
+            _updatedPathListView.itemsSource = _updatedPathList; // Güncellenmiş path'leri listele
+
+            _helpbox.messageType = HelpBoxMessageType.Info;
+            _helpbox.text = "Liste Yüklendi. Toplam Path: " + _originalPathList.Count;
+
+
+            _originalPathListView.RefreshItems();
+            _updatedPathListView.RefreshItems();
+        }
+
+        private void UpdateAnimationPaths()
+        {
+            _helpbox.messageType = HelpBoxMessageType.Info;
+            _helpbox.text = "Güncelleme butonuna tıklandı.";
+            _discardButton.text = "Discard All Changes (saved)";
+
+            if (_originalPathList.Count == 0)
+            {
+                _helpbox.messageType = HelpBoxMessageType.Warning;
+                _helpbox.text = "Güncellenecek path yok. Lütfen önce path'leri yükleyin.";
+                return;
+            }
+
+            string prefix = _prefixTextField?.value;
+            if (string.IsNullOrEmpty(prefix))
+            {
+                _helpbox.messageType = HelpBoxMessageType.Warning;
+                _helpbox.text = "Ön ek boş veya null.";
+                return;
+            }
+
+            // Animation Window ve aktif klip referansları
+            Type animationWindowType = Type.GetType("UnityEditor.AnimationWindow,UnityEditor");
+            var animationWindow = Resources.FindObjectsOfTypeAll(animationWindowType);
+            if (animationWindow.Length == 0)
+            {
+                _helpbox.messageType = HelpBoxMessageType.Error;
+                _helpbox.text = "Animation Window bulunamadı.";
+                return;
+            }
+
+            var animationWindowInstance = animationWindow[0];
+            var animEditorField = animationWindowType.GetField("m_AnimEditor", BindingFlags.NonPublic | BindingFlags.Instance);
+            var animEditor = animEditorField?.GetValue(animationWindowInstance);
+            if (animEditor == null)
+            {
+                _helpbox.messageType = HelpBoxMessageType.Error;
+                _helpbox.text = "Animasyon editörü örneği bulunamadı.";
+                return;
+            }
+
+            var animEditorStateField = animEditor.GetType().GetField("m_State", BindingFlags.NonPublic | BindingFlags.Instance);
+            var animEditorState = animEditorStateField?.GetValue(animEditor);
+            if (animEditorState == null)
+            {
+                _helpbox.messageType = HelpBoxMessageType.Error;
+                _helpbox.text = "Animasyon editör durumu aktif değil.";
+                return;
+            }
+
+            //var currentClipProperty = animEditorState.GetType().GetProperty("activeAnimationClip", BindingFlags.Public | BindingFlags.Instance);
+            //var activeClip = currentClipProperty?.GetValue(animEditorState) as AnimationClip;
+
+            if (_activeClip == null)
+            {
+                _helpbox.messageType = HelpBoxMessageType.Warning;
+                _helpbox.text = "Aktif animasyon klip bulunamadı. Güncelleme işlemi yapılamaz.";
+                return;
+            }
+
+            // Path'leri güncelle ve animasyon klibe yaz
+
+
+            if (_oldNewBindingGlobal != null)
+            {
+                int index2 = 0;
+                foreach (var newbinding in _newBindingGlobal)
+                {
+                    var curve = AnimationUtility.GetEditorCurve(_activeClip, _oldNewBindingGlobal[index2]);
+                    AnimationUtility.SetEditorCurve(_activeClip, _oldNewBindingGlobal[index2], null); // Eski path'i kaldır
+                    AnimationUtility.SetEditorCurve(_activeClip, newbinding, curve);
+                    index2++;
+                }
+                _helpbox.messageType = HelpBoxMessageType.Info;
+                _helpbox.text = "Aktif Animasyonun üzerine tekrar yazıldı! Toplam Path : " + index2.ToString();
+            }
+            else
+            {
+
+                int index = 0;
+                foreach (var newbinding in _newBindingGlobal)
+                {
+                    var curve = AnimationUtility.GetEditorCurve(_activeClip, _bindingGlobal[index]);
+                    AnimationUtility.SetEditorCurve(_activeClip, _bindingGlobal[index], null); // Eski path'i kaldır
+                    AnimationUtility.SetEditorCurve(_activeClip, newbinding, curve);
+                    index++;
+                }
+                _helpbox.messageType = HelpBoxMessageType.Info;
+                _helpbox.text = "Aktif Animasyonun üzerine yazıldı! Toplam Path : " + index.ToString();
+            }
+            _oldNewBindingGlobal = _newBindingGlobal;
+
+        }
+        private void DiscardAllChanged()
+        {
+            _discardButton.text = "Discard All Changes";
+            int index2 = 0;
+            foreach (var binding in _bindingGlobal)
+            {
+                var curve = AnimationUtility.GetEditorCurve(_activeClip, _oldNewBindingGlobal[index2]);
+                AnimationUtility.SetEditorCurve(_activeClip, _oldNewBindingGlobal[index2], null); // Eski path'i kaldır
+                AnimationUtility.SetEditorCurve(_activeClip, binding, curve);
                 index2++;
             }
-            helpbox.messageType = HelpBoxMessageType.Info;
-            helpbox.text = "Aktif Animasyonun üzerine tekrar yazıldı! Toplam Path : " + index2.ToString();
+            _helpbox.messageType = HelpBoxMessageType.Info;
+            _helpbox.text = "Aktif Animasyonun Eski haline getirildi.";
+            _oldNewBindingGlobal = null;
         }
-        else
-        {
-
-            int index = 0;
-            foreach (var newbinding in newbinding_global)
-            {
-                var curve = AnimationUtility.GetEditorCurve(activeClip, binding_global[index]);
-                AnimationUtility.SetEditorCurve(activeClip, binding_global[index], null); // Eski path'i kaldır
-                AnimationUtility.SetEditorCurve(activeClip, newbinding, curve);
-                index++;
-            }
-            helpbox.messageType = HelpBoxMessageType.Info;
-            helpbox.text = "Aktif Animasyonun üzerine yazıldı! Toplam Path : " + index.ToString();
-        }
-        old_newbinding_global = newbinding_global;
-
     }
-    private void DiscardAllChanged()
-    {
-        int index2 = 0;
-        foreach (var binding in binding_global)
-        {
-            var curve = AnimationUtility.GetEditorCurve(activeClip, old_newbinding_global[index2]);
-            AnimationUtility.SetEditorCurve(activeClip, old_newbinding_global[index2], null); // Eski path'i kaldır
-            AnimationUtility.SetEditorCurve(activeClip, binding, curve);
-            index2++;
-        }
-        helpbox.messageType = HelpBoxMessageType.Info;
-        helpbox.text = "Aktif Animasyonun Eski haline getirildi.";
-        old_newbinding_global = null;
-    }
-
-
-
 }
 
 
